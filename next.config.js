@@ -1,11 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  env: {
-    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
-    NEXT_PUBLIC_MENU_SHEET_ID: process.env.NEXT_PUBLIC_MENU_SHEET_ID,
-    NEXT_PUBLIC_ORDER_SHEET_ID: process.env.NEXT_PUBLIC_ORDER_SHEET_ID,
-    NEXT_PUBLIC_GOOGLE_SCRIPT_URL: process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL,
-  },
+  // 環境変数はサーバーサイドでのみ使用するため、envセクションは不要
   async headers() {
     return [
       {

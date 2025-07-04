@@ -155,7 +155,7 @@ export default function HomePage() {
                 <p className="mb-2">解決方法:</p>
                 <ol className="list-decimal list-inside space-y-1">
                   <li>Google Apps Scriptをデプロイして、URLを取得</li>
-                  <li>.env.local ファイルに NEXT_PUBLIC_GOOGLE_SCRIPT_URL を設定</li>
+                  <li>.env.local ファイルに GOOGLE_SCRIPT_URL を設定</li>
                   <li>Google Sheetsにメニューデータを追加</li>
                   <li>開発サーバーを再起動</li>
                 </ol>
