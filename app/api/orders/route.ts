@@ -12,12 +12,16 @@ export async function GET() {
       );
     }
 
-    // サーバーサイドからGoogle Apps Scriptを呼び出し
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOrders&sheetId=${ORDER_SHEET_ID}`, {
+    // サーバーサイドからGoogle Apps Scriptを呼び出し（キャッシュバスター付き）
+    const cacheBuster = Date.now();
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOrders&sheetId=${ORDER_SHEET_ID}&t=${cacheBuster}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
       },
+      cache: 'no-store'
     });
 
     if (!response.ok) {

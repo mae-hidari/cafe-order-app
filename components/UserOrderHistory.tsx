@@ -14,6 +14,32 @@ export default function UserOrderHistory({ userId }: UserOrderHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchUserOrders = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      
+      const allOrders = await getOrders();
+      const filteredOrders = allOrders.filter(order => order.userId === userId);
+      setUserOrders(filteredOrders);
+    } catch (error) {
+      console.error("注文履歴の取得に失敗しました:", error);
+      const errorMessage = error instanceof Error ? error.message : "注文履歴の取得に失敗しました";
+      setError(errorMessage);
+      if (!showRefreshing) {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     // ローカルストレージから完了済み注文を読み込み
@@ -21,31 +47,17 @@ export default function UserOrderHistory({ userId }: UserOrderHistoryProps) {
     if (savedCompleted) {
       setCompletedOrders(new Set(JSON.parse(savedCompleted)));
     }
-    
-    const fetchUserOrders = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const allOrders = await getOrders();
-        const filteredOrders = allOrders.filter(order => order.userId === userId);
-        setUserOrders(filteredOrders);
-      } catch (error) {
-        console.error("注文履歴の取得に失敗しました:", error);
-        const errorMessage = error instanceof Error ? error.message : "注文履歴の取得に失敗しました";
-        setError(errorMessage);
-        toast.error(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
 
     if (userId) {
+      // 初回のみデータを取得
       fetchUserOrders();
-      // 30秒間隔で更新
-      const interval = setInterval(fetchUserOrders, 30000);
-      return () => clearInterval(interval);
     }
   }, [userId]);
+
+  // 手動更新機能
+  const handleRefresh = () => {
+    fetchUserOrders(true);
+  };
 
   const getOrderId = (order: Order) => `${order.timestamp}-${order.item}-${order.userId}`;
   const totalAmount = userOrders.reduce((sum, order) => sum + order.price, 0);
@@ -72,9 +84,33 @@ export default function UserOrderHistory({ userId }: UserOrderHistoryProps) {
 
   return (
     <div className="card">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        📋 注文履歴
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          📋 注文履歴
+        </h3>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
+        >
+          <svg
+            className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span className="text-sm">
+            {refreshing ? '更新中...' : '更新'}
+          </span>
+        </button>
+      </div>
       
       {userOrders.length === 0 ? (
         <div className="text-center py-6 text-gray-500 dark:text-gray-400">

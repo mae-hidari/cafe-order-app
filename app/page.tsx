@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { getMenuItems, addOrder } from "@/lib/sheets";
 import MenuItemCard from "@/components/MenuItemCard";
@@ -31,7 +30,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"menu" | "cart">("menu");
-  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
 
   // ユーザー情報の初期化
   useEffect(() => {
@@ -46,29 +45,42 @@ export default function HomePage() {
     }
   }, []);
 
-  // メニューデータの取得と30秒間隔での更新
+  // メニューデータの取得
+  const fetchMenu = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      
+      const items = await getMenuItems();
+      setMenuItems(items);
+    } catch (error) {
+      console.error("メニューの取得に失敗しました:", error);
+      const errorMessage = error instanceof Error ? error.message : "メニューの取得に失敗しました";
+      setError(errorMessage);
+      if (!showRefreshing) {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId) return;
     
-    const fetchMenu = async () => {
-      try {
-        setError(null);
-        const items = await getMenuItems();
-        setMenuItems(items);
-        setLoading(false);
-      } catch (error) {
-        console.error("メニューの取得に失敗しました:", error);
-        const errorMessage = error instanceof Error ? error.message : "メニューの取得に失敗しました";
-        setError(errorMessage);
-        toast.error(errorMessage);
-        setLoading(false);
-      }
-    };
-
+    // 初回のみデータを取得
     fetchMenu();
-    const interval = setInterval(fetchMenu, 30000); // 30秒間隔
-    return () => clearInterval(interval);
   }, [userId]);
+
+  // 手動更新機能
+  const handleRefreshMenu = () => {
+    fetchMenu(true);
+  };
 
   // カートに商品を追加
   const addToCart = (item: MenuItem) => {
@@ -201,6 +213,35 @@ export default function HomePage() {
       {/* メニュータブ */}
       {activeTab === "menu" && (
         <div className="px-4 py-6">
+          {/* メニュー更新ボタン */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              🍽️ メニュー
+            </h2>
+            <button
+              onClick={handleRefreshMenu}
+              disabled={refreshing || loading}
+              className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
+            >
+              <svg
+                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span className="text-sm">
+                {refreshing ? '更新中...' : '更新'}
+              </span>
+            </button>
+          </div>
+
           {loading && (
             <div className="flex justify-center items-center min-h-[200px]">
               <LoadingSpinner size="lg" />
@@ -223,10 +264,10 @@ export default function HomePage() {
                     {error}
                   </p>
                   <button
-                    onClick={() => window.location.reload()}
+                    onClick={handleRefreshMenu}
                     className="btn-primary"
                   >
-                    再読み込み
+                    再試行
                   </button>
                 </div>
               </div>
