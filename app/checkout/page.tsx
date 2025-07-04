@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { getOrders, Order } from "@/lib/sheets";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export interface UserTotal {
   userId: string;
@@ -73,7 +74,7 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }

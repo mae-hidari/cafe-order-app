@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { getOrders, updateOrderStatus } from "@/lib/sheets";
 import { Order } from "@/lib/sheets";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -13,6 +14,7 @@ export default function AdminPage() {
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -58,6 +60,12 @@ export default function AdminPage() {
 
   // 初期化
   useEffect(() => {
+    // ローカルストレージから完了済み注文を読み込み
+    const savedCompleted = localStorage.getItem('admin-completed-orders');
+    if (savedCompleted) {
+      setCompletedOrders(new Set(JSON.parse(savedCompleted)));
+    }
+    
     fetchOrders();
     setLastOrderCount(orders.length);
     
@@ -75,17 +83,22 @@ export default function AdminPage() {
     }
   }, [soundEnabled]);
 
-  // 注文の完了状態を切り替え
-  const toggleOrderStatus = async (orderId: string, completed: boolean) => {
-    try {
-      await updateOrderStatus(orderId, !completed);
-      setOrders(prev => prev.map(order => 
-        order.timestamp === orderId ? { ...order, completed: !completed } : order
-      ));
-      toast.success(completed ? "注文を未完了に変更しました" : "注文を完了に変更しました");
-    } catch (error) {
-      toast.error("注文の状態更新に失敗しました");
+  // 注文の完了状態を切り替え（ローカルストレージベース）
+  const toggleOrderStatus = (orderId: string, completed: boolean) => {
+    const newCompletedOrders = new Set(completedOrders);
+    
+    if (completed) {
+      // 完了済みから未完了に変更
+      newCompletedOrders.delete(orderId);
+      toast.success("注文を未完了に変更しました");
+    } else {
+      // 未完了から完了に変更
+      newCompletedOrders.add(orderId);
+      toast.success("注文を完了に変更しました");
     }
+    
+    setCompletedOrders(newCompletedOrders);
+    localStorage.setItem('admin-completed-orders', JSON.stringify(Array.from(newCompletedOrders)));
   };
 
   // ユーザーごとの注文集計
@@ -108,13 +121,15 @@ export default function AdminPage() {
     total: number;
   }>);
 
-  const pendingOrders = orders.filter(order => !order.completed);
-  const completedOrders = orders.filter(order => order.completed);
+  // ローカルストレージの状態を使用して完了状態を判定
+  const getOrderId = (order: Order) => `${order.timestamp}-${order.item}-${order.userId}`;
+  const pendingOrders = orders.filter(order => !completedOrders.has(getOrderId(order)));
+  const completedOrdersList = orders.filter(order => completedOrders.has(getOrderId(order)));
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -173,7 +188,7 @@ export default function AdminPage() {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {completedOrders.length}
+              {completedOrdersList.length}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               完了済み注文
@@ -279,7 +294,7 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => toggleOrderStatus(order.timestamp, order.completed || false)}
+                              onClick={() => toggleOrderStatus(getOrderId(order), false)}
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
                             >
                               完了
@@ -294,11 +309,11 @@ export default function AdminPage() {
             )}
 
             {/* 完了済み注文 */}
-            {completedOrders.length > 0 && (
+            {completedOrdersList.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    ✅ 完了済み注文 ({completedOrders.length})
+                    ✅ 完了済み注文 ({completedOrdersList.length})
                   </h2>
                 </div>
                 <div className="overflow-x-auto">
@@ -323,8 +338,8 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {completedOrders.map((order) => (
-                        <tr key={`${order.timestamp}-${order.item}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 opacity-60">
+                      {completedOrdersList.map((order) => (
+                        <tr key={getOrderId(order)} className="hover:bg-gray-50 dark:hover:bg-gray-700 opacity-60">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             {new Date(order.timestamp).toLocaleString('ja-JP', {
                               month: 'short',
@@ -354,7 +369,7 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => toggleOrderStatus(order.timestamp, order.completed || false)}
+                              onClick={() => toggleOrderStatus(getOrderId(order), true)}
                               className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md text-sm"
                             >
                               未完了に戻す
@@ -396,7 +411,7 @@ export default function AdminPage() {
                           <span className="text-sm text-gray-600 dark:text-gray-400">
                             {order.item}
                           </span>
-                          {order.completed && (
+                          {completedOrders.has(getOrderId(order)) && (
                             <span className="ml-2 text-green-500">✓</span>
                           )}
                         </div>

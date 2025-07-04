@@ -129,6 +129,15 @@ function getMenuData(sheetId) {
     const sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
     const data = sheet.getDataRange().getValues();
     
+    // ヘッダーが存在しない場合は作成
+    if (data.length === 0) {
+      sheet.getRange(1, 1, 1, 3).setValues([['name', 'price', 'stock']]);
+      return { 
+        success: true, 
+        data: [] 
+      };
+    }
+    
     // ヘッダー行をスキップ
     const menu = data.length > 1 ? data.slice(1) : [];
     

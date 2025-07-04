@@ -8,6 +8,8 @@ import MenuItemCard from "@/components/MenuItemCard";
 import Cart from "@/components/Cart";
 import UserIdentity from "@/components/UserIdentity";
 import BottomNav from "@/components/BottomNav";
+import UserOrderHistory from "@/components/UserOrderHistory";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export interface MenuItem {
   name: string;
@@ -69,6 +71,11 @@ export default function HomePage() {
 
   // カートに商品を追加
   const addToCart = (item: MenuItem) => {
+    if (item.stock <= 0) {
+      toast.error(`${item.name} は在庫切れです`);
+      return;
+    }
+    
     setCart(prev => {
       const existingItem = prev.find(cartItem => cartItem.name === item.name);
       if (existingItem) {
@@ -195,7 +202,7 @@ export default function HomePage() {
         <div className="px-4 py-6">
           {loading && (
             <div className="flex justify-center items-center min-h-[200px]">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <LoadingSpinner size="lg" />
             </div>
           )}
           
@@ -241,7 +248,11 @@ export default function HomePage() {
 
       {/* カートタブ */}
       {activeTab === "cart" && (
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 space-y-6">
+          {/* 注文履歴 */}
+          <UserOrderHistory userId={userId!} />
+          
+          {/* 現在のカート */}
           {cart.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🛒</div>

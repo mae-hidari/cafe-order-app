@@ -3,6 +3,7 @@
 export interface MenuItem {
   name: string;
   price: number;
+  stock: number;
 }
 
 export interface Order {
@@ -37,6 +38,7 @@ export async function getMenuItems(): Promise<MenuItem[]> {
     const menuItems = result.data.map((row: any[]) => ({
       name: row[0] || '',
       price: parseInt(row[1]) || 0,
+      stock: parseInt(row[2]) || 0,
     })).filter((item: MenuItem) => item.name && item.price > 0);
     
     if (menuItems.length === 0) {
