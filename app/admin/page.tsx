@@ -69,7 +69,8 @@ export default function AdminPage() {
   // 音声コンテキストの初期化
   useEffect(() => {
     if (soundEnabled && !audioContext) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
       setAudioContext(ctx);
     }
   }, [soundEnabled]);
