@@ -139,3 +139,17 @@ function getMenuData(sheetId) {
     };
   }
 }
+
+// CORS対応のレスポンス作成関数
+function createCorsResponse(data) {
+  const jsonString = JSON.stringify(data);
+  
+  return ContentService
+    .createTextOutput(jsonString)
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+}

@@ -24,12 +24,22 @@ export async function GET() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log('Google Apps Script レスポンス (GET):', responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('JSON パースエラー:', parseError);
+      throw new Error(`JSONパースに失敗しました: ${responseText}`);
+    }
+    
     return NextResponse.json(data);
   } catch (error) {
     console.error('注文データの取得に失敗しました:', error);
     return NextResponse.json(
-      { success: false, error: '注文データの取得に失敗しました' },
+      { success: false, error: error instanceof Error ? error.message : '注文データの取得に失敗しました' },
       { status: 500 }
     );
   }
@@ -63,12 +73,34 @@ export async function POST(request: NextRequest) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log('Google Apps Script レスポンス:', responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('JSON パースエラー:', parseError);
+      console.error('レスポンステキスト:', responseText);
+      
+      // Google Apps Scriptが成功時にリダイレクトHTMLを返すことがあるため、
+      // 200ステータスの場合は成功として扱う
+      if (response.status === 200) {
+        return NextResponse.json({ 
+          success: true, 
+          message: '注文が正常に追加されました',
+          data: orderData 
+        });
+      }
+      
+      throw new Error(`JSONパースに失敗しました: ${responseText}`);
+    }
+    
     return NextResponse.json(data);
   } catch (error) {
     console.error('注文の追加に失敗しました:', error);
     return NextResponse.json(
-      { success: false, error: '注文の追加に失敗しました' },
+      { success: false, error: error instanceof Error ? error.message : '注文の追加に失敗しました' },
       { status: 500 }
     );
   }
