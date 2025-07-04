@@ -7,9 +7,12 @@ export interface MenuItem {
 
 export interface Order {
   timestamp: string;
-  user: string;
+  userId: string;
+  nickname: string;
+  animal: string;
   item: string;
   price: number;
+  completed?: boolean;
 }
 
 // 内部APIを経由してメニューデータを取得
@@ -96,12 +99,43 @@ export async function getOrders(): Promise<Order[]> {
     
     return result.data.map((row: any[]) => ({
       timestamp: row[0] || '',
-      user: row[1] || '',
-      item: row[2] || '',
-      price: parseInt(row[3]) || 0,
-    })).filter((order: Order) => order.timestamp && order.user && order.item && order.price > 0);
+      userId: row[1] || '',
+      nickname: row[2] || '',
+      animal: row[3] || '',
+      item: row[4] || '',
+      price: parseInt(row[5]) || 0,
+      completed: row[6] === 'true' || false,
+    })).filter((order: Order) => order.timestamp && order.userId && order.item && order.price > 0);
   } catch (error) {
     console.error('注文データの取得に失敗しました:', error);
+    throw error;
+  }
+}
+
+// 管理者用：注文の完了状態を更新
+export async function updateOrderStatus(orderId: string, completed: boolean): Promise<void> {
+  try {
+    const response = await fetch('/api/orders/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ orderId, completed }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(`API エラー: ${result.error || '不明なエラー'}`);
+    }
+    
+    console.log('注文の状態が更新されました:', result);
+  } catch (error) {
+    console.error('注文の状態更新に失敗しました:', error);
     throw error;
   }
 }

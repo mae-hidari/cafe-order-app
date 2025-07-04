@@ -39,6 +39,8 @@ function doPost(e) {
     
     if (action === 'addOrder') {
       return addOrder(data.sheetId, data.data);
+    } else if (action === 'updateOrderStatus') {
+      return updateOrderStatus(data.sheetId, data.orderId, data.completed);
     }
     
     return createCorsResponse({ success: false, error: 'Invalid action' });
@@ -71,15 +73,18 @@ function addOrder(sheetId, orderData) {
     
     // ヘッダーが存在しない場合は作成
     if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 4).setValues([['timestamp', 'user', 'item', 'price']]);
+      sheet.getRange(1, 1, 1, 7).setValues([['timestamp', 'userId', 'nickname', 'animal', 'item', 'price', 'completed']]);
     }
     
     // 新しい行を追加
     const newRow = [
       orderData.timestamp,
-      orderData.user,
+      orderData.userId,
+      orderData.nickname,
+      orderData.animal,
       orderData.item,
-      orderData.price
+      orderData.price,
+      orderData.completed || false
     ];
     
     sheet.appendRow(newRow);
@@ -137,6 +142,41 @@ function getMenuData(sheetId) {
       success: false, 
       error: error.toString() 
     };
+  }
+}
+
+// 注文状態の更新
+function updateOrderStatus(sheetId, orderId, completed) {
+  try {
+    const sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    
+    // ヘッダー行をスキップして、対象の注文を検索
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const timestamp = row[0];
+      
+      if (timestamp.toString() === orderId.toString()) {
+        // completed列（7列目）を更新
+        sheet.getRange(i + 1, 7).setValue(completed);
+        
+        return createCorsResponse({ 
+          success: true, 
+          message: 'Order status updated successfully' 
+        });
+      }
+    }
+    
+    return createCorsResponse({ 
+      success: false, 
+      error: 'Order not found' 
+    });
+      
+  } catch (error) {
+    return createCorsResponse({ 
+      success: false, 
+      error: error.toString() 
+    });
   }
 }
 

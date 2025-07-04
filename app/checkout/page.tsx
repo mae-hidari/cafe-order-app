@@ -3,17 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { getOrders } from "@/lib/sheets";
-
-export interface Order {
-  timestamp: string;
-  user: string;
-  item: string;
-  price: number;
-}
+import { getOrders, Order } from "@/lib/sheets";
 
 export interface UserTotal {
-  user: string;
+  userId: string;
+  nickname: string;
+  animal: string;
   total: number;
   orders: Order[];
 }
@@ -32,23 +27,27 @@ export default function CheckoutPage() {
         const orders = await getOrders();
         
         // ユーザー別に集計
-        const userMap = new Map<string, { total: number; orders: Order[] }>();
+        const userMap = new Map<string, { nickname: string; animal: string; total: number; orders: Order[] }>();
         
         orders.forEach(order => {
-          const existing = userMap.get(order.user);
+          const existing = userMap.get(order.userId);
           if (existing) {
             existing.total += order.price;
             existing.orders.push(order);
           } else {
-            userMap.set(order.user, {
+            userMap.set(order.userId, {
+              nickname: order.nickname,
+              animal: order.animal,
               total: order.price,
               orders: [order],
             });
           }
         });
 
-        const totals = Array.from(userMap.entries()).map(([user, data]) => ({
-          user,
+        const totals = Array.from(userMap.entries()).map(([userId, data]) => ({
+          userId,
+          nickname: data.nickname,
+          animal: data.animal,
           total: data.total,
           orders: data.orders,
         }));
@@ -135,11 +134,19 @@ export default function CheckoutPage() {
 
         <div className="space-y-4">
           {userTotals.map((userTotal) => (
-            <div key={userTotal.user} className="card">
+            <div key={userTotal.userId} className="card">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {userTotal.user}
-                </h3>
+                <div className="flex items-center space-x-3">
+                  <div className="text-2xl">{userTotal.animal.split(" ")[0]}</div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {userTotal.nickname}
+                    </h3>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {userTotal.animal.split(" ")[1]}
+                    </div>
+                  </div>
+                </div>
                 <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                   ¥{userTotal.total.toLocaleString()}
                 </span>
