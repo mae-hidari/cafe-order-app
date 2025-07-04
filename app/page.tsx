@@ -14,6 +14,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 export interface MenuItem {
   name: string;
   price: number;
+  stock: number;
 }
 
 export interface CartItem extends MenuItem {
