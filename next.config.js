@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-    MENU_SHEET_ID: process.env.MENU_SHEET_ID,
-    ORDER_SHEET_ID: process.env.ORDER_SHEET_ID,
+    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
+    NEXT_PUBLIC_MENU_SHEET_ID: process.env.NEXT_PUBLIC_MENU_SHEET_ID,
+    NEXT_PUBLIC_ORDER_SHEET_ID: process.env.NEXT_PUBLIC_ORDER_SHEET_ID,
+    NEXT_PUBLIC_GOOGLE_SCRIPT_URL: process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL,
   },
   async headers() {
     return [

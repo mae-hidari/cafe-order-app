@@ -105,10 +105,10 @@ bash scripts/setup.sh
 
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
-| `GOOGLE_API_KEY` | Google Sheets API キー | `AIza...` |
-| `MENU_SHEET_ID` | メニューシートID | `1AbcD...` |
-| `ORDER_SHEET_ID` | オーダーシートID | `1XyZ...` |
-| `GOOGLE_SCRIPT_URL` | Google Apps Script Web App URL | `https://script.google.com/macros/s/.../exec` |
+| `NEXT_PUBLIC_GOOGLE_API_KEY` | Google Sheets API キー | `AIza...` |
+| `NEXT_PUBLIC_MENU_SHEET_ID` | メニューシートID | `1AbcD...` |
+| `NEXT_PUBLIC_ORDER_SHEET_ID` | オーダーシートID | `1XyZ...` |
+| `NEXT_PUBLIC_GOOGLE_SCRIPT_URL` | Google Apps Script Web App URL | `https://script.google.com/macros/s/.../exec` |
 
 ## 利用可能なスクリプト
 

@@ -14,21 +14,21 @@ function doGet(e) {
   try {
     const action = e.parameter.action;
     const sheetId = e.parameter.sheetId;
+    const callback = e.parameter.callback;
     
+    let result;
     if (action === 'getOrders') {
-      return getOrders(sheetId);
+      result = getOrdersData(sheetId);
     } else if (action === 'getMenu') {
-      return getMenu(sheetId);
+      result = getMenuData(sheetId);
+    } else {
+      result = { success: false, error: 'Invalid action' };
     }
     
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: 'Invalid action' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createResponse(result, callback);
       
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createResponse({ success: false, error: error.toString() }, e.parameter.callback);
   }
 }
 
@@ -41,13 +41,26 @@ function doPost(e) {
       return addOrder(data.sheetId, data.data);
     }
     
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: 'Invalid action' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createCorsResponse({ success: false, error: 'Invalid action' });
       
   } catch (error) {
+    return createCorsResponse({ success: false, error: error.toString() });
+  }
+}
+
+// JSONP対応のレスポンス作成関数
+function createResponse(data, callback) {
+  const jsonString = JSON.stringify(data);
+  
+  if (callback) {
+    // JSONP形式
     return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
+      .createTextOutput(`${callback}(${jsonString})`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    // 通常のJSON形式
+    return ContentService
+      .createTextOutput(jsonString)
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -71,25 +84,21 @@ function addOrder(sheetId, orderData) {
     
     sheet.appendRow(newRow);
     
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: true, 
-        message: 'Order added successfully',
-        data: newRow
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createCorsResponse({ 
+      success: true, 
+      message: 'Order added successfully',
+      data: newRow
+    });
       
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: false, 
-        error: error.toString() 
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createCorsResponse({ 
+      success: false, 
+      error: error.toString() 
+    });
   }
 }
 
-function getOrders(sheetId) {
+function getOrdersData(sheetId) {
   try {
     const sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
     const data = sheet.getDataRange().getValues();
@@ -97,24 +106,20 @@ function getOrders(sheetId) {
     // ヘッダー行をスキップ
     const orders = data.length > 1 ? data.slice(1) : [];
     
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: true, 
-        data: orders 
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { 
+      success: true, 
+      data: orders 
+    };
       
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: false, 
-        error: error.toString() 
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { 
+      success: false, 
+      error: error.toString() 
+    };
   }
 }
 
-function getMenu(sheetId) {
+function getMenuData(sheetId) {
   try {
     const sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
     const data = sheet.getDataRange().getValues();
@@ -122,19 +127,15 @@ function getMenu(sheetId) {
     // ヘッダー行をスキップ
     const menu = data.length > 1 ? data.slice(1) : [];
     
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: true, 
-        data: menu 
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { 
+      success: true, 
+      data: menu 
+    };
       
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: false, 
-        error: error.toString() 
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { 
+      success: false, 
+      error: error.toString() 
+    };
   }
 }

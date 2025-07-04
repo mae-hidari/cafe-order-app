@@ -21,12 +21,14 @@ export interface UserTotal {
 export default function CheckoutPage() {
   const [userTotals, setUserTotals] = useState<UserTotal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // 注文データの取得と30秒間隔での更新
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        setError(null);
         const orders = await getOrders();
         
         // ユーザー別に集計
@@ -55,7 +57,9 @@ export default function CheckoutPage() {
         setLoading(false);
       } catch (error) {
         console.error("注文データの取得に失敗しました:", error);
-        toast.error("注文データの取得に失敗しました");
+        const errorMessage = error instanceof Error ? error.message : "注文データの取得に失敗しました";
+        setError(errorMessage);
+        toast.error(errorMessage);
         setLoading(false);
       }
     };
@@ -71,6 +75,44 @@ export default function CheckoutPage() {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="px-4 pb-6">
+        <div className="card bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833-.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
+                設定エラー
+              </h3>
+              <p className="text-red-700 dark:text-red-300 mb-4">
+                {error}
+              </p>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-primary"
+                >
+                  再読み込み
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="btn-secondary"
+                >
+                  メニューに戻る
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
