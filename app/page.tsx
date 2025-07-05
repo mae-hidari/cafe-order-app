@@ -40,6 +40,7 @@ export default function HomePage() {
   const [showStaffConfirmation, setShowStaffConfirmation] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<CartItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [menuLastUpdated, setMenuLastUpdated] = useState<Date | null>(null);
 
   // ユーザー情報の初期化
   useEffect(() => {

@@ -27,7 +27,9 @@ export interface Order {
 // 内部APIを経由してメニューデータを取得
 export async function getMenuItems(): Promise<MenuItem[]> {
   try {
-    const response = await fetch('/api/menu');
+    // キャッシュバスター追加
+    const timestamp = new Date().getTime();
+    const response = await fetch(`/api/menu?t=${timestamp}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -93,7 +95,9 @@ export async function addOrder(order: Order): Promise<void> {
 // 内部APIを経由して注文データを取得
 export async function getOrders(): Promise<Order[]> {
   try {
-    const response = await fetch('/api/orders');
+    // キャッシュバスター追加
+    const timestamp = new Date().getTime();
+    const response = await fetch(`/api/orders?t=${timestamp}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
