@@ -104,9 +104,10 @@ export default function AdminPage() {
     }
   }, [soundEnabled]);
 
-  // 注文の完了状態を切り替え（スプレッドシート更新）
+  // 注文の完了状態を切り替え（楽観的更新 + スプレッドシート更新）
   const toggleOrderStatus = async (order: Order, completed: boolean) => {
     const orderId = getOrderId(order);
+    const newCompletedStatus = !completed;
     
     // ローディング状態を開始
     setUpdatingOrders(prev => {
@@ -115,9 +116,18 @@ export default function AdminPage() {
       return newSet;
     });
     
+    // 楽観的更新：UIを即座に更新
+    setOrders(prevOrders => 
+      prevOrders.map(o => 
+        o.orderId === orderId 
+          ? { ...o, completed: newCompletedStatus }
+          : o
+      )
+    );
+    
     try {
       // スプレッドシートを更新
-      await updateOrderStatus(orderId, !completed);
+      await updateOrderStatus(orderId, newCompletedStatus);
       
       // 成功時のメッセージ
       if (completed) {
@@ -128,10 +138,18 @@ export default function AdminPage() {
         markOrderAsSeen(order);
       }
       
-      // 注文データを再取得して最新状態を反映
-      fetchOrders();
     } catch (error) {
       console.error('スプレッドシートの更新に失敗しました:', error);
+      
+      // エラー時：楽観的更新を元に戻す
+      setOrders(prevOrders => 
+        prevOrders.map(o => 
+          o.orderId === orderId 
+            ? { ...o, completed: completed }
+            : o
+        )
+      );
+      
       toast.error("スプレッドシートの更新に失敗しました");
     } finally {
       // ローディング状態を確実に終了
