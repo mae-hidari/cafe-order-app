@@ -32,7 +32,7 @@ export default function UserOrderHistory({ userId, userOrders, loading, error, o
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const getOrderId = (order: Order) => `${order.timestamp}-${order.item}-${order.userId}`;
+  const getOrderId = (order: Order) => order.orderId;
   const totalAmount = userOrders.reduce((sum, order) => sum + order.price, 0);
 
   if (loading) {
@@ -92,9 +92,9 @@ export default function UserOrderHistory({ userId, userOrders, loading, error, o
       ) : (
         <>
           <div className="space-y-3 mb-4 max-h-40 overflow-y-auto">
-            {userOrders.map((order, index) => (
+            {userOrders.map((order) => (
               <div 
-                key={`${order.timestamp}-${index}`}
+                key={order.orderId}
                 className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
               >
                 <div>

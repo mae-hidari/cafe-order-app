@@ -151,8 +151,8 @@ export default function AdminPage() {
     total: number;
   }>);
 
-  // ローカルストレージの状態を使用して完了状態を判定
-  const getOrderId = (order: Order) => `${order.timestamp}-${order.item}-${order.userId}`;
+  // 注文IDを取得（新しいorderIdプロパティを使用）
+  const getOrderId = (order: Order) => order.orderId;
   
   // 注文を新しいものから降順でソート
   const sortedOrders = [...orders].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -328,7 +328,7 @@ export default function AdminPage() {
                         const isNew = isNewOrder(order);
                         return (
                         <tr 
-                          key={`${order.timestamp}-${order.item}`} 
+                          key={order.orderId} 
                           className={`${
                             isNew 
                               ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/30' 
@@ -392,7 +392,7 @@ export default function AdminPage() {
                     const isNew = isNewOrder(order);
                     return (
                       <div 
-                        key={`${order.timestamp}-${order.item}`}
+                        key={order.orderId}
                         className={`p-4 ${
                           isNew 
                             ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400' 
@@ -481,7 +481,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {completedOrdersList.map((order) => (
-                        <tr key={getOrderId(order)} className="hover:bg-gray-50 dark:hover:bg-gray-700 opacity-60">
+                        <tr key={order.orderId} className="hover:bg-gray-50 dark:hover:bg-gray-700 opacity-60">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             {new Date(order.timestamp).toLocaleString('ja-JP', {
                               month: 'short',
@@ -527,7 +527,7 @@ export default function AdminPage() {
                 <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
                   {completedOrdersList.map((order) => (
                     <div 
-                      key={getOrderId(order)}
+                      key={order.orderId}
                       className="p-4 opacity-60"
                     >
                       <div className="flex justify-between items-start mb-3">
@@ -599,7 +599,7 @@ export default function AdminPage() {
                 <div className="px-6 py-4">
                   <div className="space-y-2">
                     {userData.orders.map((order) => (
-                      <div key={`${order.timestamp}-${order.item}`} className="flex justify-between items-center">
+                      <div key={order.orderId} className="flex justify-between items-center">
                         <div className="flex items-center">
                           <span className="text-sm text-gray-600 dark:text-gray-400">
                             {order.item}

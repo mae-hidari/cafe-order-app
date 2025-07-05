@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { getMenuItems, addOrder, getOrders, Order } from "@/lib/sheets";
+import { getMenuItems, addOrder, getOrders, Order, generateOrderId } from "@/lib/sheets";
 import MenuItemCard from "@/components/MenuItemCard";
 import Cart from "@/components/Cart";
 import UserIdentity from "@/components/UserIdentity";
@@ -244,13 +244,17 @@ export default function HomePage() {
 
   // 注文を送信
   const submitOrder = async () => {
+    if (!userId) return;
+    
     setSubmitting(true);
     try {
       const timestamp = new Date().toISOString();
       
       for (const item of pendingOrder) {
         for (let i = 0; i < item.quantity; i++) {
+          const orderId = generateOrderId();
           await addOrder({
+            orderId,
             timestamp,
             userId,
             nickname,
@@ -370,14 +374,6 @@ export default function HomePage() {
               🍽️ メニュー
             </h2>
             <div className="flex items-center space-x-3">
-              {isAdmin && (
-                <a
-                  href="/admin"
-                  className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
-                >
-                  🛠️ 管理画面
-                </a>
-              )}
               <button
                 onClick={handleRefreshMenu}
                 disabled={refreshing || loading}

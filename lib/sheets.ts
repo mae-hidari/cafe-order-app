@@ -1,5 +1,10 @@
 // クライアントサイドでは内部APIを使用
 
+// UUID生成関数
+export function generateOrderId(): string {
+  return 'order_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+}
+
 export interface MenuItem {
   name: string;
   price: number;
@@ -8,6 +13,7 @@ export interface MenuItem {
 }
 
 export interface Order {
+  orderId: string;
   timestamp: string;
   userId: string;
   nickname: string;
@@ -102,14 +108,15 @@ export async function getOrders(): Promise<Order[]> {
     }
     
     return result.data.map((row: any[]) => ({
-      timestamp: row[0] || '',
-      userId: row[1] || '',
-      nickname: row[2] || '',
-      animal: row[3] || '',
-      item: row[4] || '',
-      price: parseInt(row[5]) || 0,
-      completed: row[6] === 'true' || false,
-    })).filter((order: Order) => order.timestamp && order.userId && order.item && order.price > 0);
+      orderId: row[0] || '',
+      timestamp: row[1] || '',
+      userId: row[2] || '',
+      nickname: row[3] || '',
+      animal: row[4] || '',
+      item: row[5] || '',
+      price: parseInt(row[6]) || 0,
+      completed: row[7] === 'true' || false,
+    })).filter((order: Order) => order.orderId && order.timestamp && order.userId && order.item && order.price > 0);
   } catch (error) {
     console.error('注文データの取得に失敗しました:', error);
     throw error;
