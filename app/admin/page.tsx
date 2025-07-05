@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [timeAgo, setTimeAgo] = useState<string>('');
   const [sortBy, setSortBy] = useState<'time' | 'item'>('time');
   const [checkedOutOrders, setCheckedOutOrders] = useState<Set<string>>(new Set());
+  const [checkedOutUsers, setCheckedOutUsers] = useState<Set<string>>(new Set());
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -107,6 +108,17 @@ export default function AdminPage() {
       }
     }
     
+    // ユーザー別会計済み状態をローカルストレージから読み込み
+    const savedCheckedOutUsers = localStorage.getItem('cafe-admin-checkout-users');
+    if (savedCheckedOutUsers) {
+      try {
+        const checkedOutUsersArray = JSON.parse(savedCheckedOutUsers);
+        setCheckedOutUsers(new Set(checkedOutUsersArray));
+      } catch (error) {
+        console.error('ユーザー別会計済み状態の読み込みに失敗しました:', error);
+      }
+    }
+    
     fetchOrders();
   }, []);
 
@@ -167,6 +179,23 @@ export default function AdminPage() {
       
       // ローカルストレージに保存
       localStorage.setItem('cafe-admin-checkout', JSON.stringify(Array.from(newSet)));
+      
+      return newSet;
+    });
+  };
+
+  // ユーザー別会計済み状態の切り替え
+  const toggleUserCheckout = (userId: string) => {
+    setCheckedOutUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      
+      // ローカルストレージに保存
+      localStorage.setItem('cafe-admin-checkout-users', JSON.stringify(Array.from(newSet)));
       
       return newSet;
     });
@@ -366,7 +395,7 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
         {/* 統計情報 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-6 mb-6 md:mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 md:p-6 shadow-sm">
             <div className="text-lg md:text-2xl font-bold text-blue-600 dark:text-blue-400">
               {pendingOrders.length}
@@ -389,6 +418,22 @@ export default function AdminPage() {
             </div>
             <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
               利用者数
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 md:p-6 shadow-sm">
+            <div className="text-lg md:text-2xl font-bold text-green-600 dark:text-green-400">
+              {checkedOutUsers.size}
+            </div>
+            <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+              会計済み
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 md:p-6 shadow-sm">
+            <div className="text-lg md:text-2xl font-bold text-red-600 dark:text-red-400">
+              {Object.keys(userOrders).length - checkedOutUsers.size}
+            </div>
+            <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
+              未会計
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 md:p-6 shadow-sm">
@@ -456,9 +501,6 @@ export default function AdminPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           金額
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          会計済み
-                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           操作
                         </th>
@@ -511,14 +553,6 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             ¥{order.price.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <input
-                              type="checkbox"
-                              checked={checkedOutOrders.has(order.orderId)}
-                              onChange={() => toggleCheckout(order.orderId)}
-                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
@@ -645,9 +679,6 @@ export default function AdminPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           金額
                         </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          会計済み
-                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           操作
                         </th>
@@ -682,14 +713,6 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             ¥{order.price.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <input
-                              type="checkbox"
-                              checked={checkedOutOrders.has(order.orderId)}
-                              onChange={() => toggleCheckout(order.orderId)}
-                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
@@ -819,13 +842,35 @@ export default function AdminPage() {
                     ))}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center mb-3">
                       <span className="text-lg font-semibold text-gray-900 dark:text-white">
                         合計
                       </span>
                       <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                         ¥{userData.total.toLocaleString()}
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checkedOutUsers.has(userId)}
+                          onChange={() => toggleUserCheckout(userId)}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
+                        <span className={`text-sm font-medium ${
+                          checkedOutUsers.has(userId) 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}>
+                          会計済み
+                        </span>
+                      </label>
+                      {checkedOutUsers.has(userId) && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                          ✅ 支払い完了
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
