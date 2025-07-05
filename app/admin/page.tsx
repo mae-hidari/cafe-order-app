@@ -18,6 +18,7 @@ export default function AdminPage() {
   const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [timeAgo, setTimeAgo] = useState<string>('');
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -105,10 +106,40 @@ export default function AdminPage() {
     }
   }, [soundEnabled]);
 
+  // 経過時間の定期更新
+  useEffect(() => {
+    if (!lastUpdated) return;
+    
+    const updateTimeAgo = () => {
+      setTimeAgo(getTimeAgo(lastUpdated));
+    };
+    
+    updateTimeAgo(); // 初回実行
+    const interval = setInterval(updateTimeAgo, 1000); // 1秒ごとに更新
+    
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
   // 手動更新
   const handleManualRefresh = () => {
     setRefreshing(true);
     fetchOrders();
+  };
+
+  // 経過時間の表示
+  const getTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds}秒前`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes}分前`;
+    } else {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours}時間前`;
+    }
   };
 
   // 注文の完了状態を切り替え（楽観的更新 + スプレッドシート更新）
@@ -243,39 +274,6 @@ export default function AdminPage() {
                   🔊 効果音
                 </span>
               </label>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={handleManualRefresh}
-                  disabled={refreshing || loading}
-                  className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1 rounded-lg text-sm transition-colors"
-                >
-                  <svg
-                    className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  <span>{refreshing ? '更新中...' : '更新'}</span>
-                </button>
-                {lastUpdated && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                    前回更新: {lastUpdated.toLocaleString('ja-JP', {
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -363,9 +361,38 @@ export default function AdminPage() {
             {pendingOrders.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                 <div className="px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    🔄 未完了注文 ({pendingOrders.length})
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      🔄 未完了注文 ({pendingOrders.length})
+                    </h2>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={handleManualRefresh}
+                        disabled={refreshing || loading}
+                        className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                      >
+                        <svg
+                          className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                        <span>{refreshing ? '更新中...' : '更新'}</span>
+                      </button>
+                      {lastUpdated && timeAgo && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {timeAgo}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 {/* デスクトップ版テーブル */}
