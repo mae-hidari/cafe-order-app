@@ -61,7 +61,13 @@ export async function POST(request: NextRequest) {
       throw new Error(`JSONパースに失敗しました: ${responseText}`);
     }
     
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     console.error('注文の状態更新に失敗しました:', error);
     return NextResponse.json(
