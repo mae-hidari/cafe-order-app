@@ -8,6 +8,10 @@
  * 5. 実行者: 自分, アクセス許可: 全員
  * 6. デプロイしてURLを取得
  * 7. そのURLを GOOGLE_SCRIPT_URL に設定
+ * 
+ * スプレッドシート構造:
+ * 注文シート: orderId | timestamp | userId | nickname | animal | item | price | completed
+ * メニューシート: name | price | stock | category
  */
 
 function doGet(e) {
@@ -73,11 +77,12 @@ function addOrder(sheetId, orderData) {
     
     // ヘッダーが存在しない場合は作成
     if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 7).setValues([['timestamp', 'userId', 'nickname', 'animal', 'item', 'price', 'completed']]);
+      sheet.getRange(1, 1, 1, 8).setValues([['orderId', 'timestamp', 'userId', 'nickname', 'animal', 'item', 'price', 'completed']]);
     }
     
-    // 新しい行を追加
+    // 新しい行を追加（orderIdを最初の列に配置）
     const newRow = [
+      orderData.orderId,
       orderData.timestamp,
       orderData.userId,
       orderData.nickname,
@@ -131,7 +136,7 @@ function getMenuData(sheetId) {
     
     // ヘッダーが存在しない場合は作成
     if (data.length === 0) {
-      sheet.getRange(1, 1, 1, 3).setValues([['name', 'price', 'stock']]);
+      sheet.getRange(1, 1, 1, 4).setValues([['name', 'price', 'stock', 'category']]);
       return { 
         success: true, 
         data: [] 
@@ -163,11 +168,11 @@ function updateOrderStatus(sheetId, orderId, completed) {
     // ヘッダー行をスキップして、対象の注文を検索
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const timestamp = row[0];
+      const orderIdFromSheet = row[0]; // orderIdは1列目（0インデックス）
       
-      if (timestamp.toString() === orderId.toString()) {
-        // completed列（7列目）を更新
-        sheet.getRange(i + 1, 7).setValue(completed);
+      if (orderIdFromSheet.toString() === orderId.toString()) {
+        // completed列（8列目）を更新
+        sheet.getRange(i + 1, 8).setValue(completed);
         
         return createCorsResponse({ 
           success: true, 
