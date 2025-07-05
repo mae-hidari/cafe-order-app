@@ -10,12 +10,13 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
   const [seenOrders, setSeenOrders] = useState<Set<string>>(new Set());
+  const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -110,11 +111,15 @@ export default function AdminPage() {
     }
   }, [soundEnabled]);
 
-  // 注文の完了状態を切り替え（ローカルストレージベース）
-  const toggleOrderStatus = (order: Order, completed: boolean) => {
+  // 注文の完了状態を切り替え（ローカルストレージ + スプレッドシート更新）
+  const toggleOrderStatus = async (order: Order, completed: boolean) => {
     const orderId = getOrderId(order);
     const newCompletedOrders = new Set(completedOrders);
     
+    // ローディング状態を開始
+    setUpdatingOrders(prev => new Set([...prev, orderId]));
+    
+    // ローカル状態を即座に更新（UX優先）
     if (completed) {
       // 完了済みから未完了に変更
       newCompletedOrders.delete(orderId);
@@ -129,6 +134,30 @@ export default function AdminPage() {
     
     setCompletedOrders(newCompletedOrders);
     localStorage.setItem('admin-completed-orders', JSON.stringify(Array.from(newCompletedOrders)));
+    
+    // 非同期でスプレッドシートを更新
+    try {
+      await updateOrderStatus(orderId, !completed);
+    } catch (error) {
+      console.error('スプレッドシートの更新に失敗しました:', error);
+      // エラー時はローカル状態を元に戻す
+      const revertedOrders = new Set(completedOrders);
+      if (completed) {
+        revertedOrders.add(orderId);
+      } else {
+        revertedOrders.delete(orderId);
+      }
+      setCompletedOrders(revertedOrders);
+      localStorage.setItem('admin-completed-orders', JSON.stringify(Array.from(revertedOrders)));
+      toast.error("スプレッドシートの更新に失敗しました");
+    } finally {
+      // ローディング状態を確実に終了
+      setUpdatingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
+    }
   };
 
   // ユーザーごとの注文集計
@@ -374,9 +403,20 @@ export default function AdminPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
                               onClick={() => toggleOrderStatus(order, false)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
+                              disabled={updatingOrders.has(order.orderId)}
+                              className={`px-3 py-1 rounded-md text-sm flex items-center space-x-1 ${
+                                updatingOrders.has(order.orderId)
+                                  ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                                  : 'bg-green-600 hover:bg-green-700 text-white'
+                              }`}
                             >
-                              完了
+                              {updatingOrders.has(order.orderId) && (
+                                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                                </svg>
+                              )}
+                              <span>完了</span>
                             </button>
                           </td>
                         </tr>
@@ -437,9 +477,20 @@ export default function AdminPage() {
                         </div>
                         <button
                           onClick={() => toggleOrderStatus(order, false)}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md text-sm font-medium"
+                          disabled={updatingOrders.has(order.orderId)}
+                          className={`w-full py-2 px-4 rounded-md text-sm font-medium flex items-center justify-center space-x-2 ${
+                            updatingOrders.has(order.orderId)
+                              ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                              : 'bg-green-600 hover:bg-green-700 text-white'
+                          }`}
                         >
-                          完了
+                          {updatingOrders.has(order.orderId) && (
+                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                              <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                            </svg>
+                          )}
+                          <span>完了</span>
                         </button>
                       </div>
                     );
@@ -512,9 +563,20 @@ export default function AdminPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
                               onClick={() => toggleOrderStatus(order, true)}
-                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md text-sm"
+                              disabled={updatingOrders.has(order.orderId)}
+                              className={`px-3 py-1 rounded-md text-sm flex items-center space-x-1 ${
+                                updatingOrders.has(order.orderId)
+                                  ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                                  : 'bg-gray-600 hover:bg-gray-700 text-white'
+                              }`}
                             >
-                              未完了に戻す
+                              {updatingOrders.has(order.orderId) && (
+                                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                                </svg>
+                              )}
+                              <span>未完了に戻す</span>
                             </button>
                           </td>
                         </tr>
@@ -566,9 +628,20 @@ export default function AdminPage() {
                       </div>
                       <button
                         onClick={() => toggleOrderStatus(order, true)}
-                        className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-md text-sm font-medium"
+                        disabled={updatingOrders.has(order.orderId)}
+                        className={`w-full py-2 px-4 rounded-md text-sm font-medium flex items-center justify-center space-x-2 ${
+                          updatingOrders.has(order.orderId)
+                            ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                            : 'bg-gray-600 hover:bg-gray-700 text-white'
+                        }`}
                       >
-                        未完了に戻す
+                        {updatingOrders.has(order.orderId) && (
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                          </svg>
+                        )}
+                        <span>未完了に戻す</span>
                       </button>
                     </div>
                   ))}

@@ -22,9 +22,16 @@ export default function MenuItemCard({ item, onAddToCart }: MenuItemCardProps) {
               </span>
             )}
           </div>
-          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-            ¥{item.price.toLocaleString()}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+              ¥{item.price.toLocaleString()}
+            </p>
+            {item.creator && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                by {item.creator}
+              </span>
+            )}
+          </div>
         </div>
         <button
           onClick={onAddToCart}

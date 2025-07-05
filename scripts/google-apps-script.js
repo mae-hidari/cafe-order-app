@@ -11,7 +11,7 @@
  * 
  * スプレッドシート構造:
  * 注文シート: orderId | timestamp | userId | nickname | animal | item | price | completed
- * メニューシート: name | price | stock | category
+ * メニューシート: name | price | stock | category | creator
  */
 
 function doGet(e) {
@@ -136,7 +136,7 @@ function getMenuData(sheetId) {
     
     // ヘッダーが存在しない場合は作成
     if (data.length === 0) {
-      sheet.getRange(1, 1, 1, 4).setValues([['name', 'price', 'stock', 'category']]);
+      sheet.getRange(1, 1, 1, 5).setValues([['name', 'price', 'stock', 'category', 'creator']]);
       return { 
         success: true, 
         data: [] 

@@ -15,6 +15,7 @@ export interface MenuItem {
   price: number;
   stock: boolean;
   category?: string;
+  creator?: string;
 }
 
 export interface CartItem extends MenuItem {

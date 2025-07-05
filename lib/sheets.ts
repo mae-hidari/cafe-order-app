@@ -10,6 +10,7 @@ export interface MenuItem {
   price: number;
   stock: boolean;
   category?: string;
+  creator?: string;
 }
 
 export interface Order {
@@ -47,6 +48,7 @@ export async function getMenuItems(): Promise<MenuItem[]> {
       price: parseInt(row[1]) || 0,
       stock: row[2] === 'TRUE' || row[2] === 'true' || row[2] === true,
       category: row[3] || '',
+      creator: row[4] || '',
     })).filter((item: MenuItem) => item.name && item.price > 0);
     
     if (menuItems.length === 0) {
