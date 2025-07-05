@@ -16,6 +16,7 @@ const animals = [
 export default function UserIdentity({ onUserSet }: UserIdentityProps) {
   const [nickname, setNickname] = useState("");
   const [selectedAnimal, setSelectedAnimal] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const handleSubmit = () => {
     if (!nickname.trim()) {
@@ -29,6 +30,10 @@ export default function UserIdentity({ onUserSet }: UserIdentityProps) {
     }
 
     const userId = `${nickname.trim()}_${selectedAnimal.split(" ")[1]}`;
+    
+    // 管理者フラグをローカルストレージに保存
+    localStorage.setItem('cafe-is-admin', isAdmin.toString());
+    
     onUserSet(userId, nickname.trim(), selectedAnimal);
   };
 
@@ -82,6 +87,20 @@ export default function UserIdentity({ onUserSet }: UserIdentityProps) {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={isAdmin}
+                onChange={(e) => setIsAdmin(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                🛠️ 管理者として利用する
+              </span>
+            </label>
           </div>
 
           <button

@@ -38,18 +38,22 @@ export default function HomePage() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [showStaffConfirmation, setShowStaffConfirmation] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<CartItem[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // ユーザー情報の初期化
   useEffect(() => {
     const savedUserId = localStorage.getItem('cafe-user-id');
     const savedNickname = localStorage.getItem('cafe-nickname');
     const savedAnimal = localStorage.getItem('cafe-animal');
+    const savedIsAdmin = localStorage.getItem('cafe-is-admin') === 'true';
     
     if (savedUserId && savedNickname && savedAnimal) {
       setUserId(savedUserId);
       setNickname(savedNickname);
       setAnimal(savedAnimal);
     }
+    
+    setIsAdmin(savedIsAdmin);
 
     // AudioContextの初期化
     const initAudioContext = () => {
@@ -222,9 +226,6 @@ export default function HomePage() {
     localStorage.setItem('cafe-animal', newAnimal);
   };
 
-  // 管理者かどうかを判定
-  const isAdmin = nickname === '管理者';
-
   // 注文確認画面を表示
   const initiateOrder = () => {
     if (!userId) {
@@ -345,9 +346,11 @@ export default function HomePage() {
                 localStorage.removeItem('cafe-user-id');
                 localStorage.removeItem('cafe-nickname');
                 localStorage.removeItem('cafe-animal');
+                localStorage.removeItem('cafe-is-admin');
                 setUserId(null);
                 setNickname("");
                 setAnimal("");
+                setIsAdmin(false);
                 setCart([]);
               }}
               className="text-sm text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"

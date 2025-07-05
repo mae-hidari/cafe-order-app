@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
+  const [seenOrders, setSeenOrders] = useState<Set<string>>(new Set());
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -45,6 +46,28 @@ export default function AdminPage() {
       // 新しい注文があった場合に効果音を再生
       if (soundEnabled && orderData.length > lastOrderCount && lastOrderCount > 0) {
         playNotificationSound();
+      }
+      
+      // 新規注文の検出（初回読み込み時は全て既存として扱う）
+      if (orders.length > 0) {
+        const currentOrderIds = new Set(orders.map(getOrderId));
+        const newOrderIds = orderData
+          .map(getOrderId)
+          .filter(id => !currentOrderIds.has(id));
+        
+        // 新規注文以外を"見た"として記録
+        const updatedSeenOrders = new Set(Array.from(seenOrders));
+        orderData.forEach(order => {
+          const orderId = getOrderId(order);
+          if (!newOrderIds.includes(orderId)) {
+            updatedSeenOrders.add(orderId);
+          }
+        });
+        setSeenOrders(updatedSeenOrders);
+      } else {
+        // 初回読み込み時は全て既存として扱う
+        const allOrderIds = new Set(orderData.map(getOrderId));
+        setSeenOrders(allOrderIds);
       }
       
       setOrders(orderData);
@@ -88,7 +111,8 @@ export default function AdminPage() {
   }, [soundEnabled]);
 
   // 注文の完了状態を切り替え（ローカルストレージベース）
-  const toggleOrderStatus = (orderId: string, completed: boolean) => {
+  const toggleOrderStatus = (order: Order, completed: boolean) => {
+    const orderId = getOrderId(order);
     const newCompletedOrders = new Set(completedOrders);
     
     if (completed) {
@@ -99,6 +123,8 @@ export default function AdminPage() {
       // 未完了から完了に変更
       newCompletedOrders.add(orderId);
       toast.success("注文を完了に変更しました");
+      // 完了時に新規注文を"見た"として記録
+      markOrderAsSeen(order);
     }
     
     setCompletedOrders(newCompletedOrders);
@@ -127,8 +153,21 @@ export default function AdminPage() {
 
   // ローカルストレージの状態を使用して完了状態を判定
   const getOrderId = (order: Order) => `${order.timestamp}-${order.item}-${order.userId}`;
-  const pendingOrders = orders.filter(order => !completedOrders.has(getOrderId(order)));
-  const completedOrdersList = orders.filter(order => completedOrders.has(getOrderId(order)));
+  
+  // 注文を新しいものから降順でソート
+  const sortedOrders = [...orders].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  
+  const pendingOrders = sortedOrders.filter(order => !completedOrders.has(getOrderId(order)));
+  const completedOrdersList = sortedOrders.filter(order => completedOrders.has(getOrderId(order)));
+  
+  // 新規注文かどうかを判定
+  const isNewOrder = (order: Order) => !seenOrders.has(getOrderId(order));
+  
+  // 新規注文を"見た"として記録する関数
+  const markOrderAsSeen = (order: Order) => {
+    const orderId = getOrderId(order);
+    setSeenOrders(prev => new Set([...Array.from(prev), orderId]));
+  };
 
   if (loading) {
     return (
@@ -275,15 +314,33 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {pendingOrders.map((order) => (
-                        <tr key={`${order.timestamp}-${order.item}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      {pendingOrders.map((order) => {
+                        const isNew = isNewOrder(order);
+                        return (
+                        <tr 
+                          key={`${order.timestamp}-${order.item}`} 
+                          className={`${
+                            isNew 
+                              ? 'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/30' 
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {new Date(order.timestamp).toLocaleString('ja-JP', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            <div className="flex items-center space-x-2">
+                              {isNew && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                  🆕 NEW
+                                </span>
+                              )}
+                              <span>
+                                {new Date(order.timestamp).toLocaleString('ja-JP', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -306,14 +363,15 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => toggleOrderStatus(getOrderId(order), false)}
+                              onClick={() => toggleOrderStatus(order, false)}
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
                             >
                               完了
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -381,7 +439,7 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => toggleOrderStatus(getOrderId(order), true)}
+                              onClick={() => toggleOrderStatus(order, true)}
                               className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md text-sm"
                             >
                               未完了に戻す
