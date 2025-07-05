@@ -54,6 +54,7 @@ export default function HomePage() {
       setAnimal(savedAnimal);
     }
     
+    // 管理者フラグは常に設定（ユーザー情報の有無に関係なく）
     setIsAdmin(savedIsAdmin);
 
     // AudioContextの初期化
@@ -225,6 +226,10 @@ export default function HomePage() {
     localStorage.setItem('cafe-user-id', newUserId);
     localStorage.setItem('cafe-nickname', newNickname);
     localStorage.setItem('cafe-animal', newAnimal);
+    
+    // 管理者フラグをローカルストレージから読み込んで設定
+    const savedIsAdmin = localStorage.getItem('cafe-is-admin') === 'true';
+    setIsAdmin(savedIsAdmin);
   };
 
   // 注文確認画面を表示
