@@ -19,6 +19,8 @@ export default function AdminPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [timeAgo, setTimeAgo] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'time' | 'item'>('time');
+  const [checkedOutOrders, setCheckedOutOrders] = useState<Set<string>>(new Set());
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -94,6 +96,17 @@ export default function AdminPage() {
     const ctx = new AudioContextClass();
     setAudioContext(ctx);
     
+    // 会計済み状態をローカルストレージから読み込み
+    const savedCheckedOut = localStorage.getItem('cafe-admin-checkout');
+    if (savedCheckedOut) {
+      try {
+        const checkedOutArray = JSON.parse(savedCheckedOut);
+        setCheckedOutOrders(new Set(checkedOutArray));
+      } catch (error) {
+        console.error('会計済み状態の読み込みに失敗しました:', error);
+      }
+    }
+    
     fetchOrders();
   }, []);
 
@@ -140,6 +153,35 @@ export default function AdminPage() {
       const hours = Math.floor(diffInSeconds / 3600);
       return `${hours}時間前`;
     }
+  };
+
+  // 会計済み状態の切り替え
+  const toggleCheckout = (orderId: string) => {
+    setCheckedOutOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      
+      // ローカルストレージに保存
+      localStorage.setItem('cafe-admin-checkout', JSON.stringify(Array.from(newSet)));
+      
+      return newSet;
+    });
+  };
+
+  // 注文をソートする関数
+  const sortOrders = (orders: Order[]) => {
+    return [...orders].sort((a, b) => {
+      if (sortBy === 'item') {
+        return a.item.localeCompare(b.item, 'ja');
+      } else {
+        // 時間順（新しい順）
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      }
+    });
   };
 
   // 注文の完了状態を切り替え（楽観的更新 + スプレッドシート更新）
@@ -222,11 +264,11 @@ export default function AdminPage() {
   // 注文IDを取得（新しいorderIdプロパティを使用）
   const getOrderId = (order: Order) => order.orderId;
   
-  // 注文を新しいものから降順でソート
-  const sortedOrders = [...orders].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  // 注文をソート
+  const sortedOrders = sortOrders(orders);
   
-  const pendingOrders = sortedOrders.filter(order => !order.completed);
-  const completedOrdersList = sortedOrders.filter(order => order.completed);
+  const pendingOrders = sortOrders(orders.filter(order => !order.completed));
+  const completedOrdersList = sortOrders(orders.filter(order => order.completed));
   
   // 新規注文かどうかを判定
   const isNewOrder = (order: Order) => !seenOrders.has(getOrderId(order));
@@ -288,6 +330,12 @@ export default function AdminPage() {
                   {timeAgo}
                 </div>
               )}
+              <button
+                onClick={() => setSortBy(sortBy === 'time' ? 'item' : 'time')}
+                className="flex items-center space-x-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+              >
+                <span>{sortBy === 'time' ? '⏰ 時間順' : '🍽️ 商品順'}</span>
+              </button>
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -408,6 +456,9 @@ export default function AdminPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           金額
                         </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          会計済み
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           操作
                         </th>
@@ -460,6 +511,14 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             ¥{order.price.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <input
+                              type="checkbox"
+                              checked={checkedOutOrders.has(order.orderId)}
+                              onChange={() => toggleCheckout(order.orderId)}
+                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
@@ -586,6 +645,9 @@ export default function AdminPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           金額
                         </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          会計済み
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           操作
                         </th>
@@ -620,6 +682,14 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                             ¥{order.price.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <input
+                              type="checkbox"
+                              checked={checkedOutOrders.has(order.orderId)}
+                              onChange={() => toggleCheckout(order.orderId)}
+                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
