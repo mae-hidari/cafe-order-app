@@ -70,6 +70,14 @@ export default function AdminPage() {
         setSeenOrders(allOrderIds);
       }
       
+      // デバッグ用：完了状態をログ出力
+      console.log('Order data with completion status:', orderData.map(order => ({
+        orderId: order.orderId,
+        item: order.item,
+        completed: order.completed,
+        completedType: typeof order.completed
+      })));
+      
       setOrders(orderData);
       setLastOrderCount(orderData.length);
       setLoading(false);

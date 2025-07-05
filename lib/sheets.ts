@@ -117,7 +117,7 @@ export async function getOrders(): Promise<Order[]> {
       animal: row[4] || '',
       item: row[5] || '',
       price: parseInt(row[6]) || 0,
-      completed: row[7] === 'true' || false,
+      completed: row[7] === 'true' || row[7] === true || row[7] === 'TRUE' || false,
     })).filter((order: Order) => order.orderId && order.timestamp && order.userId && order.item && order.price > 0);
   } catch (error) {
     console.error('注文データの取得に失敗しました:', error);
