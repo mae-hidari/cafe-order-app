@@ -16,6 +16,8 @@ export default function AdminPage() {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [seenOrders, setSeenOrders] = useState<Set<string>>(new Set());
   const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 効果音の再生
   const playNotificationSound = () => {
@@ -72,12 +74,15 @@ export default function AdminPage() {
       
       setOrders(orderData);
       setLastOrderCount(orderData.length);
+      setLastUpdated(new Date());
       setLoading(false);
+      setRefreshing(false);
     } catch (error) {
       console.error("注文データの取得に失敗しました:", error);
       const errorMessage = error instanceof Error ? error.message : "注文データの取得に失敗しました";
       setError(errorMessage);
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -89,10 +94,6 @@ export default function AdminPage() {
     setAudioContext(ctx);
     
     fetchOrders();
-    
-    // 5秒間隔で注文データを取得
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   // 音声コンテキストの初期化
@@ -103,6 +104,12 @@ export default function AdminPage() {
       setAudioContext(ctx);
     }
   }, [soundEnabled]);
+
+  // 手動更新
+  const handleManualRefresh = () => {
+    setRefreshing(true);
+    fetchOrders();
+  };
 
   // 注文の完了状態を切り替え（楽観的更新 + スプレッドシート更新）
   const toggleOrderStatus = async (order: Order, completed: boolean) => {
@@ -236,8 +243,38 @@ export default function AdminPage() {
                   🔊 効果音
                 </span>
               </label>
-              <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                5秒間隔で自動更新
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleManualRefresh}
+                  disabled={refreshing || loading}
+                  className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                >
+                  <svg
+                    className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span>{refreshing ? '更新中...' : '更新'}</span>
+                </button>
+                {lastUpdated && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                    前回更新: {lastUpdated.toLocaleString('ja-JP', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
