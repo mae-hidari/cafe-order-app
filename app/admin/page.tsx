@@ -14,7 +14,6 @@ export default function AdminPage() {
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
   const [seenOrders, setSeenOrders] = useState<Set<string>>(new Set());
   const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
 
@@ -84,12 +83,6 @@ export default function AdminPage() {
 
   // 初期化
   useEffect(() => {
-    // ローカルストレージから完了済み注文を読み込み
-    const savedCompleted = localStorage.getItem('admin-completed-orders');
-    if (savedCompleted) {
-      setCompletedOrders(new Set(JSON.parse(savedCompleted)));
-    }
-    
     // AudioContextを初期化
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     const ctx = new AudioContextClass();
@@ -111,10 +104,9 @@ export default function AdminPage() {
     }
   }, [soundEnabled]);
 
-  // 注文の完了状態を切り替え（ローカルストレージ + スプレッドシート更新）
+  // 注文の完了状態を切り替え（スプレッドシート更新）
   const toggleOrderStatus = async (order: Order, completed: boolean) => {
     const orderId = getOrderId(order);
-    const newCompletedOrders = new Set(completedOrders);
     
     // ローディング状態を開始
     setUpdatingOrders(prev => {
@@ -123,36 +115,23 @@ export default function AdminPage() {
       return newSet;
     });
     
-    // ローカル状態を即座に更新（UX優先）
-    if (completed) {
-      // 完了済みから未完了に変更
-      newCompletedOrders.delete(orderId);
-      toast.success("注文を未完了に変更しました");
-    } else {
-      // 未完了から完了に変更
-      newCompletedOrders.add(orderId);
-      toast.success("注文を完了に変更しました");
-      // 完了時に新規注文を"見た"として記録
-      markOrderAsSeen(order);
-    }
-    
-    setCompletedOrders(newCompletedOrders);
-    localStorage.setItem('admin-completed-orders', JSON.stringify(Array.from(newCompletedOrders)));
-    
-    // 非同期でスプレッドシートを更新
     try {
+      // スプレッドシートを更新
       await updateOrderStatus(orderId, !completed);
+      
+      // 成功時のメッセージ
+      if (completed) {
+        toast.success("注文を未完了に変更しました");
+      } else {
+        toast.success("注文を完了に変更しました");
+        // 完了時に新規注文を"見た"として記録
+        markOrderAsSeen(order);
+      }
+      
+      // 注文データを再取得して最新状態を反映
+      fetchOrders();
     } catch (error) {
       console.error('スプレッドシートの更新に失敗しました:', error);
-      // エラー時はローカル状態を元に戻す
-      const revertedOrders = new Set(completedOrders);
-      if (completed) {
-        revertedOrders.add(orderId);
-      } else {
-        revertedOrders.delete(orderId);
-      }
-      setCompletedOrders(revertedOrders);
-      localStorage.setItem('admin-completed-orders', JSON.stringify(Array.from(revertedOrders)));
       toast.error("スプレッドシートの更新に失敗しました");
     } finally {
       // ローディング状態を確実に終了
@@ -190,8 +169,8 @@ export default function AdminPage() {
   // 注文を新しいものから降順でソート
   const sortedOrders = [...orders].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   
-  const pendingOrders = sortedOrders.filter(order => !completedOrders.has(getOrderId(order)));
-  const completedOrdersList = sortedOrders.filter(order => completedOrders.has(getOrderId(order)));
+  const pendingOrders = sortedOrders.filter(order => !order.completed);
+  const completedOrdersList = sortedOrders.filter(order => order.completed);
   
   // 新規注文かどうかを判定
   const isNewOrder = (order: Order) => !seenOrders.has(getOrderId(order));
@@ -681,7 +660,7 @@ export default function AdminPage() {
                           <span className="text-sm text-gray-600 dark:text-gray-400">
                             {order.item}
                           </span>
-                          {completedOrders.has(getOrderId(order)) && (
+                          {order.completed && (
                             <span className="ml-2 text-green-500">✓</span>
                           )}
                         </div>

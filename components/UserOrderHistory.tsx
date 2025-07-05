@@ -13,16 +13,7 @@ interface UserOrderHistoryProps {
 }
 
 export default function UserOrderHistory({ userId, userOrders, loading, error, onRefresh }: UserOrderHistoryProps) {
-  const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    // ローカルストレージから完了済み注文を読み込み
-    const savedCompleted = localStorage.getItem('admin-completed-orders');
-    if (savedCompleted) {
-      setCompletedOrders(new Set(JSON.parse(savedCompleted)));
-    }
-  }, []);
 
   // 手動更新機能
   const handleRefresh = () => {
@@ -32,7 +23,6 @@ export default function UserOrderHistory({ userId, userOrders, loading, error, o
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const getOrderId = (order: Order) => order.orderId;
   const totalAmount = userOrders.reduce((sum, order) => sum + order.price, 0);
 
   if (loading) {
@@ -114,7 +104,7 @@ export default function UserOrderHistory({ userId, userOrders, loading, error, o
                   <span className="font-medium text-gray-900 dark:text-white">
                     ¥{order.price.toLocaleString()}
                   </span>
-                  {completedOrders.has(getOrderId(order)) && (
+                  {order.completed && (
                     <span className="text-green-500 text-sm">✓</span>
                   )}
                 </div>
