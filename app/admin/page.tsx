@@ -387,7 +387,7 @@ export default function AdminPage() {
                         <span>{refreshing ? '更新中...' : '更新'}</span>
                       </button>
                       {lastUpdated && timeAgo && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 min-w-[60px] text-right">
                           {timeAgo}
                         </div>
                       )}
