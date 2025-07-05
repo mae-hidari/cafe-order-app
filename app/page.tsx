@@ -364,33 +364,43 @@ export default function HomePage() {
       {/* メニュータブ */}
       {activeTab === "menu" && (
         <div className="px-4 py-6">
-          {/* メニュー更新ボタン */}
+          {/* メニューヘッダー */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               🍽️ メニュー
             </h2>
-            <button
-              onClick={handleRefreshMenu}
-              disabled={refreshing || loading}
-              className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
-            >
-              <svg
-                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="flex items-center space-x-3">
+              {isAdmin && (
+                <a
+                  href="/admin"
+                  className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
+                >
+                  🛠️ 管理画面
+                </a>
+              )}
+              <button
+                onClick={handleRefreshMenu}
+                disabled={refreshing || loading}
+                className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span className="text-sm">
-                {refreshing ? '更新中...' : '更新'}
-              </span>
-            </button>
+                <svg
+                  className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span className="text-sm">
+                  {refreshing ? '更新中...' : '更新'}
+                </span>
+              </button>
+            </div>
           </div>
 
           {loading && (

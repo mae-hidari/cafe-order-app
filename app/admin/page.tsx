@@ -183,9 +183,17 @@ export default function AdminPage() {
       <div className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-              🛠️ 管理者画面
-            </h1>
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                🛠️ 管理者画面
+              </h1>
+              <a
+                href="/"
+                className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"
+              >
+                🍽️ メニューに戻る
+              </a>
+            </div>
             <div className="flex items-center space-x-2 md:space-x-4">
               <label className="flex items-center space-x-2">
                 <input
