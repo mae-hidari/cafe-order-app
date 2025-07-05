@@ -1,45 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getOrders, Order } from "@/lib/sheets";
-import { toast } from "react-hot-toast";
+import { Order } from "@/lib/sheets";
 import LoadingSpinner from "./LoadingSpinner";
 
 interface UserOrderHistoryProps {
   userId: string;
+  userOrders: Order[];
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
 }
 
-export default function UserOrderHistory({ userId }: UserOrderHistoryProps) {
-  const [userOrders, setUserOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function UserOrderHistory({ userId, userOrders, loading, error, onRefresh }: UserOrderHistoryProps) {
   const [completedOrders, setCompletedOrders] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
-
-  const fetchUserOrders = async (showRefreshing = false) => {
-    try {
-      if (showRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-      
-      const allOrders = await getOrders();
-      const filteredOrders = allOrders.filter(order => order.userId === userId);
-      setUserOrders(filteredOrders);
-    } catch (error) {
-      console.error("注文履歴の取得に失敗しました:", error);
-      const errorMessage = error instanceof Error ? error.message : "注文履歴の取得に失敗しました";
-      setError(errorMessage);
-      if (!showRefreshing) {
-        toast.error(errorMessage);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
   useEffect(() => {
     // ローカルストレージから完了済み注文を読み込み
@@ -47,16 +22,14 @@ export default function UserOrderHistory({ userId }: UserOrderHistoryProps) {
     if (savedCompleted) {
       setCompletedOrders(new Set(JSON.parse(savedCompleted)));
     }
-
-    if (userId) {
-      // 初回のみデータを取得
-      fetchUserOrders();
-    }
-  }, [userId]);
+  }, []);
 
   // 手動更新機能
   const handleRefresh = () => {
-    fetchUserOrders(true);
+    setRefreshing(true);
+    onRefresh();
+    // 少し遅延させてスピナーを表示
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
   const getOrderId = (order: Order) => `${order.timestamp}-${order.item}-${order.userId}`;

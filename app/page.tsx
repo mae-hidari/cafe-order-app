@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { getMenuItems, addOrder } from "@/lib/sheets";
+import { getMenuItems, addOrder, getOrders, Order } from "@/lib/sheets";
 import MenuItemCard from "@/components/MenuItemCard";
 import Cart from "@/components/Cart";
 import UserIdentity from "@/components/UserIdentity";
@@ -13,7 +13,8 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 export interface MenuItem {
   name: string;
   price: number;
-  stock: number;
+  stock: boolean;
+  category?: string;
 }
 
 export interface CartItem extends MenuItem {
@@ -31,6 +32,12 @@ export default function HomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<"menu" | "cart">("menu");
   const [refreshing, setRefreshing] = useState(false);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
+  const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
+  const [orderHistoryError, setOrderHistoryError] = useState<string | null>(null);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [showStaffConfirmation, setShowStaffConfirmation] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState<CartItem[]>([]);
 
   // ユーザー情報の初期化
   useEffect(() => {
@@ -43,7 +50,53 @@ export default function HomePage() {
       setNickname(savedNickname);
       setAnimal(savedAnimal);
     }
+
+    // AudioContextの初期化
+    const initAudioContext = () => {
+      try {
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+        setAudioContext(context);
+      } catch (error) {
+        console.warn('AudioContext initialization failed:', error);
+      }
+    };
+
+    initAudioContext();
   }, []);
+
+  // 効果音を再生
+  const playSound = (frequency: number, duration: number = 0.3) => {
+    if (!audioContext) return;
+    
+    try {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+      
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (error) {
+      console.warn('Sound playback failed:', error);
+    }
+  };
+
+  // カート追加音（軽やかな音）
+  const playAddToCartSound = () => {
+    playSound(600, 0.2);
+  };
+
+  // 注文完了音（成功の音）
+  const playOrderSuccessSound = () => {
+    playSound(800, 0.4);
+  };
 
   // メニューデータの取得
   const fetchMenu = async (showRefreshing = false) => {
@@ -70,11 +123,43 @@ export default function HomePage() {
     }
   };
 
+  // 注文履歴の取得
+  const fetchUserOrders = async (showRefreshing = false) => {
+    if (!userId) return;
+    
+    try {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setOrderHistoryLoading(true);
+      }
+      setOrderHistoryError(null);
+      
+      const allOrders = await getOrders();
+      const filteredOrders = allOrders.filter(order => order.userId === userId);
+      setUserOrders(filteredOrders);
+    } catch (error) {
+      console.error("注文履歴の取得に失敗しました:", error);
+      const errorMessage = error instanceof Error ? error.message : "注文履歴の取得に失敗しました";
+      setOrderHistoryError(errorMessage);
+      if (!showRefreshing) {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setOrderHistoryLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId) return;
     
     // 初回のみデータを取得
     fetchMenu();
+    // 注文履歴がない場合のみ取得
+    if (userOrders.length === 0) {
+      fetchUserOrders();
+    }
   }, [userId]);
 
   // 手動更新機能
@@ -82,9 +167,14 @@ export default function HomePage() {
     fetchMenu(true);
   };
 
+  // 注文履歴の手動更新
+  const handleRefreshOrderHistory = () => {
+    fetchUserOrders(true);
+  };
+
   // カートに商品を追加
   const addToCart = (item: MenuItem) => {
-    if (item.stock <= 0) {
+    if (!item.stock) {
       toast.error(`${item.name} は在庫切れです`);
       return;
     }
@@ -101,6 +191,7 @@ export default function HomePage() {
       return [...prev, { ...item, quantity: 1 }];
     });
     toast.success(`${item.name} をカートに追加しました`);
+    playAddToCartSound();
   };
 
   // カートから商品を削除
@@ -131,8 +222,11 @@ export default function HomePage() {
     localStorage.setItem('cafe-animal', newAnimal);
   };
 
-  // 注文を送信
-  const submitOrder = async () => {
+  // 管理者かどうかを判定
+  const isAdmin = nickname === '管理者';
+
+  // 注文確認画面を表示
+  const initiateOrder = () => {
     if (!userId) {
       toast.error("ユーザー情報が設定されていません");
       return;
@@ -143,11 +237,17 @@ export default function HomePage() {
       return;
     }
 
+    setPendingOrder([...cart]);
+    setShowStaffConfirmation(true);
+  };
+
+  // 注文を送信
+  const submitOrder = async () => {
     setSubmitting(true);
     try {
       const timestamp = new Date().toISOString();
       
-      for (const item of cart) {
+      for (const item of pendingOrder) {
         for (let i = 0; i < item.quantity; i++) {
           await addOrder({
             timestamp,
@@ -161,7 +261,13 @@ export default function HomePage() {
       }
       
       toast.success("注文を送信しました！");
+      playOrderSuccessSound();
       setCart([]);
+      setPendingOrder([]);
+      setShowStaffConfirmation(false);
+      
+      // 注文履歴を更新
+      fetchUserOrders();
       
       // カート画面に切り替え
       setActiveTab("cart");
@@ -173,8 +279,40 @@ export default function HomePage() {
     }
   };
 
+  // 注文をキャンセル
+  const cancelOrder = () => {
+    setPendingOrder([]);
+    setShowStaffConfirmation(false);
+  };
+
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // カテゴリ別メニューの整理
+  const categoryConfig = {
+    'フード': { emoji: '🍽️', name: 'フード' },
+    'デザート': { emoji: '🍰', name: 'デザート' },
+    'ソフトドリンク': { emoji: '🥤', name: 'ソフトドリンク' },
+    'お酒': { emoji: '🍺', name: 'お酒' },
+    'その他': { emoji: '📦', name: 'その他' }
+  };
+
+  const categorizedMenu = menuItems.reduce((acc, item) => {
+    let category = item.category || 'その他';
+    // 未定義のカテゴリは「その他」に統合
+    if (!categoryConfig[category as keyof typeof categoryConfig]) {
+      category = 'その他';
+    }
+    
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {} as Record<string, MenuItem[]>);
+
+  // カテゴリの順序を定義
+  const categoryOrder = ['フード', 'デザート', 'ソフトドリンク', 'お酒', 'その他'];
 
   // ユーザーが未設定の場合は設定画面を表示
   if (!userId) {
@@ -193,20 +331,30 @@ export default function HomePage() {
               <div className="text-xs text-gray-500 dark:text-gray-400">{animal.split(" ")[1]}</div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('cafe-user-id');
-              localStorage.removeItem('cafe-nickname');
-              localStorage.removeItem('cafe-animal');
-              setUserId(null);
-              setNickname("");
-              setAnimal("");
-              setCart([]);
-            }}
-            className="text-sm text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-          >
-            ユーザー変更
-          </button>
+          <div className="flex items-center space-x-3">
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg"
+              >
+                🛠️ 管理画面
+              </a>
+            )}
+            <button
+              onClick={() => {
+                localStorage.removeItem('cafe-user-id');
+                localStorage.removeItem('cafe-nickname');
+                localStorage.removeItem('cafe-animal');
+                setUserId(null);
+                setNickname("");
+                setAnimal("");
+                setCart([]);
+              }}
+              className="text-sm text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+            >
+              ユーザー変更
+            </button>
+          </div>
         </div>
       </div>
 
@@ -275,14 +423,32 @@ export default function HomePage() {
           )}
           
           {!loading && !error && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {menuItems.map((item, index) => (
-                <MenuItemCard
-                  key={index}
-                  item={item}
-                  onAddToCart={() => addToCart(item)}
-                />
-              ))}
+            <div className="space-y-8">
+              {categoryOrder.map(categoryKey => {
+                const items = categorizedMenu[categoryKey];
+                if (!items || items.length === 0) return null;
+                
+                const config = categoryConfig[categoryKey as keyof typeof categoryConfig];
+                
+                return (
+                  <div key={categoryKey} className="space-y-4">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                      <span className="text-2xl">{config.emoji}</span>
+                      <span>{config.name}</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">({items.length}品)</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {items.map((item, index) => (
+                        <MenuItemCard
+                          key={`${categoryKey}-${index}`}
+                          item={item}
+                          onAddToCart={() => addToCart(item)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -291,9 +457,6 @@ export default function HomePage() {
       {/* カートタブ */}
       {activeTab === "cart" && (
         <div className="px-4 py-6 space-y-6">
-          {/* 注文履歴 */}
-          <UserOrderHistory userId={userId!} />
-          
           {/* 現在のカート */}
           {cart.length === 0 ? (
             <div className="text-center py-12">
@@ -324,16 +487,80 @@ export default function HomePage() {
                     <span>¥{totalPrice.toLocaleString()}</span>
                   </div>
                   <button
-                    onClick={submitOrder}
+                    onClick={initiateOrder}
                     disabled={submitting}
                     className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {submitting ? "注文中..." : "注文する"}
+                    注文する
                   </button>
                 </div>
               </div>
             </div>
           )}
+          
+          {/* 注文履歴 */}
+          <UserOrderHistory 
+            userId={userId!} 
+            userOrders={userOrders}
+            loading={orderHistoryLoading}
+            error={orderHistoryError}
+            onRefresh={handleRefreshOrderHistory}
+          />
+        </div>
+      )}
+
+      {/* スタッフ確認モーダル */}
+      {showStaffConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                👥 スタッフ確認
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                以下の注文内容をスタッフに確認してもらい、確定ボタンを押してもらってください。
+              </p>
+              
+              <div className="space-y-3 mb-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white">注文内容:</h3>
+                {pendingOrder.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        ¥{item.price.toLocaleString()} × {item.quantity}
+                      </div>
+                    </div>
+                    <div className="font-bold text-gray-900 dark:text-white">
+                      ¥{(item.price * item.quantity).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+                  <div className="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
+                    <span>合計:</span>
+                    <span>¥{pendingOrder.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelOrder}
+                  className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={submitOrder}
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
+                >
+                  {submitting ? "注文中..." : "確定"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

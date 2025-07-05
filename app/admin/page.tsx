@@ -66,8 +66,12 @@ export default function AdminPage() {
       setCompletedOrders(new Set(JSON.parse(savedCompleted)));
     }
     
+    // AudioContextを初期化
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AudioContextClass();
+    setAudioContext(ctx);
+    
     fetchOrders();
-    setLastOrderCount(orders.length);
     
     // 5秒間隔で注文データを取得
     const interval = setInterval(fetchOrders, 5000);
@@ -177,7 +181,7 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* 統計情報 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {pendingOrders.length}
@@ -200,6 +204,14 @@ export default function AdminPage() {
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               利用者数
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+              ¥{orders.reduce((sum, order) => sum + order.price, 0).toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              総売上
             </div>
           </div>
         </div>
