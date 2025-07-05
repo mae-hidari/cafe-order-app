@@ -117,7 +117,11 @@ export default function AdminPage() {
     const newCompletedOrders = new Set(completedOrders);
     
     // ローディング状態を開始
-    setUpdatingOrders(prev => new Set([...prev, orderId]));
+    setUpdatingOrders(prev => {
+      const newSet = new Set(prev);
+      newSet.add(orderId);
+      return newSet;
+    });
     
     // ローカル状態を即座に更新（UX優先）
     if (completed) {
